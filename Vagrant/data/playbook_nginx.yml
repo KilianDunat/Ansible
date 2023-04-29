@@ -1,0 +1,117 @@
+---
+- hosts: all
+  become: true
+  tasks:
+
+    - name: Installer les paquets requis
+      apt:
+        name:
+          - ca-certificates
+          - apt-transport-https
+          - software-properties-common
+          - wget
+          - curl
+          - lsb-release
+          - git
+        state: present
+  
+    - name: Ajouter le repository Ondřej Surý pour PHP
+      shell: curl -sSL https://packages.sury.org/php/README.txt | sudo bash -x
+
+    - name: Update 
+      #shell: sudo apt-get update
+	apt-get:
+        name:
+          - update
+        state: present
+
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: present
+        
+    - name: Install PHP 8.1
+      #shell: sudo apt-get install -y php8.1 libapache2-mod-php8.1 php8.1-common php8.1-curl php8.1-sqlite php8.1-bcmath php8.1-intl php8.1-mbstring php8.1-xmlrpc php8.1-mcrypt php8.1-mysql php8.1-gd php8.1-xml php8.1-cli php8.1-zip php8.1-fpm
+	apt-get:
+        name:
+          - php8.1
+          - libapache2-mod-php8.1
+	    - php8.1-common
+	    - php8.1-curl
+	    - php8.1-sqlite
+	    - php8.1-bcmath
+	    - php8.1-intl
+	    - php8.1-mbstring
+	    - php8.1-xmlrpc
+	    - php8.1-mcrypt
+	    - php8.1-mysql
+	    - php8.1-gd
+	    - php8.1-xml
+	    - php8.1-cli
+	    - php8.1-zip
+	    - php8.1-fpm
+        state: present
+        
+    #- name: Config Apache a2enmod
+    #  shell: sudo a2enmod proxy_fcgi setenvif 
+
+    #- name: Config Apache a2enconf
+    #  shell: sudo a2enconf php8.1-fpm
+
+    #- name: Restart Apache 
+    #  shell: sudo systemctl restart apache2
+
+    - name: purge Apache 
+      shell: sudo apt-get purge -y apache2
+
+    - name: Install Composer
+      shell: php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+
+    - name: Vérification Install
+      shell: php -r "if (hash_file('sha384', 'composer-setup.php') === '55ce33d7678c5a611085589f1f3ddf8b3c52d662cd01d4ba75c0ee0459970c2200a51f492d557530c71c15d8dba01eae') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
+
+    - name: Run script composer
+      shell: php composer-setup.php
+
+    - name: Suppression scipt composer
+      shell: php -r "unlink('composer-setup.php');"
+
+    - name: déplacement de composer
+      shell: sudo mv composer.phar /usr/bin/composer
+        
+    - name: Download Symfony cli
+      shell: curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | sudo -E bash
+      
+    - name: Install Symphony cli
+      #shell: sudo apt install -y symfony-cli
+	apt-get:
+        name:
+          - symfony-cli
+        state: present
+
+    - name: config user.email
+      shell: git config --global user.email "kilian.dunat@hotmail.fr"
+
+    - name: config user.name
+      shell: git config --global user.name "kilian"
+        
+    - name: Install Symfony dependencies
+      shell: symfony new --demo my_project
+
+    - name: on ce déplace dans /vagrant_data/my_project/
+      shell: cd /vagrant_data/my_project/
+      
+    - name: On copie my_project dans /var/www/
+      shell: sudo mv /vagrant_data/my_project /var/www/
+            
+    - name: On copie la conf apache
+      shell: sudo cp /vagrant_data/default /etc/nginx/sites-available
+
+    - name: Change les droits /var/www/my_project
+      shell: sudo chmod 777 -R /var/www/my_project
+
+    - name: rédemarrage service apache
+      shell: sudo systemctl restart nginx
+
+    #- name: Lance le serveur
+    #  shell: symfony serve
